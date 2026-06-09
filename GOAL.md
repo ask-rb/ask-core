@@ -173,17 +173,6 @@ endpoints.
 | Tool framework + execution tools | ask-tools, ask-tools-shell |
 | Unified provider interface with capabilities | ask-core + ask-llm-providers |
 | Agent-friendly error messages | every gem |
-## What "Done" Means
-
-- All types implemented and tested
-- Ask::Provider defines interface that provider gems can implement
-- Ask::Conversation serializes messages correctly for all provider formats
-- Ask::Stream works with both synchronous and streaming responses
-- Ask::ModelCatalog can resolve model names to providers
-- Zero runtime dependencies
-- >90% test coverage
-- README documents the full API
-- Provider gems can be written against this interface **without changes to the interface**
 
 ## Documentation
 
@@ -193,20 +182,6 @@ endpoints.
 - Add or update the relevant page(s) and submit a PR to ask-docs.
 - This is not optional — ask-docs is the public face of the ecosystem.
 
-## Release Checklist (Required for v0.1.0)
-
-Before declaring this gem done and releasing v0.1.0, verify:
-
-- [] All tests pass with >90% coverage
-- [] Every public API method has documentation (yardoc or inline comments)
-- [] README is complete: installation, quick start, configuration, development
-- [] CHANGELOG.md exists with an entry for v0.1.0
-- [] All code is committed and pushed to github.com/ask-rb/ask-core
-- [] Gem builds without errors: gem build *.gemspec
-- [] Gem is released on RubyGems
-- [] A consumer app can install, require, and use the gem with no errors
-- [] Thread-safety verified (registry, config, client construction)
-- [] Error messages are helpful and actionable
 
 ## What Done Means for v0.1.0
 
@@ -217,6 +192,48 @@ The gem reaches v0.1.0 when:
 - A consumer script can require it and use its full public API
 - The README provides enough information for someone unfamiliar to get started in 5 minutes
 - The CHANGELOG documents what v0.1.0 delivers
+
+
+## v0.1.0 Completion Checklist
+
+A gem is NOT done until every item in this checklist passes. No shortcuts. If you cannot check every box, the gem is NOT finished.
+
+### Code & Tests
+- [ ] Every public method has unit tests (happy path + edge cases + error cases)
+- [ ] Tests cover: normal operation, missing inputs, invalid inputs, network errors, auth failures
+- [ ] Integration tests with real recorded API calls using VCR cassettes (for any gem that calls external APIs)
+- [ ] All tests pass: `bundle exec rake test`
+- [ ] Test coverage >= 90% (measure with simplecov)
+- [ ] Thread-safety verified for any shared state (registries, config, client construction)
+- [ ] No warnings on load
+- [ ] No dependency conflicts
+
+### Documentation
+- [ ] README is complete: installation, quick start, configuration, examples, development
+- [ ] Every public method documented (yardoc or inline comments)
+- [ ] CHANGELOG.md exists with v0.1.0 entry
+
+### Release
+- [ ] Gem builds without errors: `gem build *.gemspec`
+- [ ] Gem is released on RubyGems.org: `gem push *.gem`
+- [ ] A fresh install works: `gem install GEMNAME` in a clean directory
+- [ ] A consumer script can require and use the full public API
+
+### Production Hardening
+- [ ] Error messages are helpful and actionable (tell the user what went wrong AND what to do)
+- [ ] Network timeouts handled (Timeout::Error, Errno::ECONNREFUSED, etc.)
+- [ ] Retry logic for transient failures (rate limits, 429, 503)
+- [ ] Sensible defaults for all configuration options
+- [ ] Input validation rejects invalid parameters with clear messages
+- [ ] Logging does not leak sensitive data (tokens, keys)
+
+### CI/CD
+- [ ] GitHub Actions workflow runs tests on push and PR (`.github/workflows/ci.yml`)
+- [ ] CI passes on Ruby 3.2, 3.3, 3.4
+
+### Post-Release
+- [ ] ask-docs repository updated with this gem documentation
+- [ ] Version tag exists: `git tag v0.1.0 && git push --tags`
 
 ## Development Workflow
 
