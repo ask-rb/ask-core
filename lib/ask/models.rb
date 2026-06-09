@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "timeout"
 require "net/http"
 require "time"
 
@@ -421,7 +422,7 @@ module Ask
       http.read_timeout = timeout
 
       request = Net::HTTP::Get.new(uri)
-      response = http.request(request)
+      response = Timeout.timeout(timeout) { http.request(request) }
 
       unless response.is_a?(Net::HTTPOK)
         warn "Failed to fetch models.dev: HTTP #{response.code}. Keeping existing models."
