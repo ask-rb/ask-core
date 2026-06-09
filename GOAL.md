@@ -30,138 +30,149 @@ shipped and stable. The agent stack depends on `ruby_llm` until this gem exists.
 ## Implementation Steps
 ## External Services We Reuse (Do Not Rebuild)
 
-The following existing services handle model metadata, discovery, and catalog data.
+We are building a Ruby-agent framework, not a global model registry, not provider APIs,
+not OAuth infrastructure. These services already exist and are proven in production.
 We call them — we do not rebuild them.
 
-### models.dev API
+---
+
+### 1. Model Metadata: models.dev
 
 - **URL:** https://models.dev/api.json
-- **Used by:** RubyLLM (production), related model registries
+- **Used by:** RubyLLM (production, every request)
 - **What it provides:** Model names, provider mapping, capabilities (function_calling,
   structured_output, reasoning, vision), modalities (text, image, audio, pdf, video),
-  pricing, context windows.
-- **How we use it:** Ask::Models fetches this on refresh(), merges with provider-fetched
-  models, caches the result. No static model JSON files to maintain by hand.
-- **Reference implementation:** ruby_llm/lib/ruby_llm/models.rb — fetch_models_dev_models()
+  pricing (input/output tokens, cache read/write), context window sizes, rate limits.
+- **Why we use it:** Without it we would need to maintain a static JSON file manually
+  and update it every time a new model is released. models.dev is updated by the
+  community and covers all major providers.
+- **How we use it:** Ask::Models.fetch_on_refresh() calls this API, caches the result,
+  merges with provider-registered models. See ruby_llm/lib/ruby_llm/models.rb:
+  fetch_models_dev_models() for the reference implementation.
+- **Fallback:** If models.dev is unreachable, we use the last cached response.
+  If no cache exists, we fall back to models registered by installed providers.
 
-### Provider Discovery Endpoints
+---
 
-Each provider serves its own model list. We query these and merge with models.dev data:
-- OpenAI: GET https://api.openai.com/v1/models
-- Anthropic: Built into SDK when possible
-- Google: SDK-based
-- Bedrock: ListFoundationModels / ListInferenceProfiles
-- Mistral: GET https://api.mistral.ai/v1/models
-- Ollama: GET http://localhost:11434/api/tags
+### 2. Provider Chat APIs (implemented by ask-llm-providers)
 
-Provider-fetched models provide real-time availability; models.dev provides pricing
-and capabilities metadata.
+These are the actual LLM endpoints. We implement HTTP clients for them, we do not
+rebuild them. Each is documented in its specific provider implementation.
 
-### What We Do NOT Build
+**OpenAI + Compatible Family** (Ask::Provider::OpenAI):
+| Provider | Base URL |
+|---|---|
+| OpenAI | https://api.openai.com/v1 |
+| OpenRouter | https://openrouter.ai/api/v1 |
+| DeepSeek | https://api.deepseek.com |
+| XAI / Grok | https://api.x.ai/v1 |
+| Perplexity | https://api.perplexity.ai |
+| Azure OpenAI | https://{resource}.openai.azure.com/openai/v1 |
+| Cerebras | https://api.cerebras.ai/v1 |
+| Fireworks | https://api.fireworks.ai/inference |
+| Groq | https://api.groq.com/openai/v1 |
+| Together | https://api.together.ai/v1 |
+| Moonshot | https://api.moonshot.ai/v1 |
 
-- No static model catalog file — models.dev replaces that.
-- No manual pricing database — models.dev provides pricing per model.
-- No custom model metadata format — we merge models.dev data with provider data.
+**Reference:** ruby_llm/lib/ruby_llm/providers/openai/ — Chat Completions + Responses API
+  llm-proxy/lib/llm_proxy/protocols/ — protocol normalization
+  pi/packages/ai/src/providers/openai-completions.ts — alternate implementations
 
-### What We DO Build
+**Anthropic** (Ask::Provider::Anthropic):
+- Base URL: https://api.anthropic.com
+- Endpoint: /v1/messages
+- Reference: ruby_llm/lib/ruby_llm/providers/anthropic/
 
-- **Model resolution:** Ask::Models.find("gpt-4o") → provider + capabilities
-- **Capability querying:** Ask::Models.capabilities("gpt-4o") → [:chat, :vision, ...]
-- **Caching:** We cache models.dev responses rather than fetching on every request
-- **Fallback:** If models.dev is unreachable, fall back to last known cache
-- **Registration:** ask-llm-providers registers provider models on gem load
-- **Merging:** models.dev data + provider data = complete model info
+**Google Gemini** (Ask::Provider::Google):
+- Base URL: https://generativelanguage.googleapis.com/v1beta
+- Reference: ruby_llm/lib/ruby_llm/providers/gemini/
 
-### Reference
+**Google Vertex AI** (Ask::Provider::VertexAI):
+- Base URL: https://{location}-aiplatform.googleapis.com/v1beta1
+- Reference: ruby_llm/lib/ruby_llm/providers/vertexai/
+  pi/packages/ai/src/providers/google-vertex.ts
 
-- models.dev integration: ruby_llm/lib/ruby_llm/models.rb
-- Pi's auto-generated catalog: pi/packages/ai/src/image-models.generated.ts
+**AWS Bedrock** (Ask::Provider::Bedrock):
+- Base URL: https://bedrock-runtime.{region}.amazonaws.com
+- Reference: ruby_llm/lib/ruby_llm/providers/bedrock/
+  pi/packages/ai/src/providers/amazon-bedrock.ts
 
+**Mistral** (Ask::Provider::Mistral):
+- Base URL: https://api.mistral.ai/v1
+- Reference: ruby_llm/lib/ruby_llm/providers/mistral/
 
-### 1. Define gem scaffold
-- `lib/ask-core.rb` — entry point, requires all components
-- `lib/ask/version.rb` — version constant
-- `ask-core.gemspec` — zero runtime dependencies
-- Zeitwerk or manual require ordering
+**Cloudflare Workers AI + AI Gateway** (Ask::Provider::Cloudflare):
+- Workers AI: https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1
+- AI Gateway (OpenAI compat): https://gateway.ai.cloudflare.com/v1/{ACCOUNT_ID}/{GATEWAY_ID}/openai
+- AI Gateway (Anthropic compat): https://gateway.ai.cloudflare.com/v1/{ACCOUNT_ID}/{GATEWAY_ID}/anthropic
+- Reference: pi/packages/ai/src/providers/cloudflare.ts (the canonical implementation)
 
-### 2. Build Ask::Error types (`lib/ask/errors.rb`)
-- `Ask::Error` base class
-- `Ask::MissingCredential` — no API key found
-- `Ask::InvalidCredential` — API key rejected by provider
-- `Ask::ProviderError` — provider returned error
-- `Ask::RateLimitError` — rate limited
-- `Ask::ContextLengthExceededError` — too many tokens
-- Each error should carry the provider name and helpful message
+**Ollama** (Ask::Provider::Ollama):
+- Base URL: http://localhost:11434 (default, configurable)
+- Reference: ruby_llm/lib/ruby_llm/providers/ollama/
 
-### 3. Build Ask::Result (`lib/ask/result.rb`)
-- Value object with `ok?`, `output`, `error`, `metadata` attributes
-- Factory: `Ask::Result.ok(data:)`, `Ask::Result.error(message:)`
-- Implements `to_s` for display, `to_h` for serialization
-- This is the shared return type for both tools AND provider calls
+### 3. OAuth Infrastructure
 
-### 4. Build Ask::Conversation (`lib/ask/conversation.rb`)
-- Message container: `add_message(role:, content:, tool_calls:, tool_call_id:)`
-- Supported roles: `system`, `user`, `assistant`, `tool`
-- `to_a` — serialize to array of hashes ready for provider API call
-- Role normalization: `Ask::RoleMap.normalize("developer")` → `"system"`
-- Support for multi-content messages (text + images)
-- `messages` — access the accumulated messages
+Used for multi-user auth flows. The endpoints are standard OAuth 2.0.
 
-### 5. Build Ask::Stream / Ask::Chunk (`lib/ask/stream.rb`)
-- `Ask::Stream` — enumerable wrapper around async stream
-- `each { |chunk| ... }` — iterate over chunks
-- `transcript` — full accumulated response
-- `Ask::Chunk` — value object with `content`, `tool_calls`, `delta` fields
-- Support for text deltas, tool call deltas, and completion signals
+| Provider | Authorize URL | Token URL |
+|---|---|---|
+| OpenAI | https://auth.openai.com/oauth/authorize | https://auth.openai.com/oauth/token |
+| Anthropic | https://claude.ai/oauth/authorize | https://platform.claude.com/v1/oauth/token |
+| GitHub | https://github.com/login/oauth/authorize | https://github.com/login/oauth/access_token |
+| Google | https://accounts.google.com/o/oauth2/v2/auth | https://oauth2.googleapis.com/token |
 
-### 6. Build Ask::ToolDef (`lib/ask/tool_def.rb`)
-- Immutable struct: `name`, `description`, `parameters` (JSON Schema hash)
-- Constructor from a tool instance: `Ask::ToolDef.from(tool)`
-- Serialization: `to_h` for provider API format
+**How we use them:** Ask::Auth::OAuth reads these URLs from configuration, performs
+the PKCE flow, and stores the result in the configured storage provider (env var,
+file, or database). We do NOT implement OAuth infrastructure — we call the standard
+endpoints.
 
-### 7. Build Ask::Provider (`lib/ask/provider.rb`)
-- Abstract base class that all provider gems implement
-- Interface:
-  - `chat(conversation, tools:, model:, &stream_block)` — chat completion
-  - `chat_with_tools(conversation, tools:, model:, &stream_block)` — with functions
-  - `chat_simple(messages, model:)` — no tools, no streaming
-  - `embed(texts, model:)` — embeddings
-  - Configured? check, model info query
-- Define the interface with keyword args and clear documentation
-- Provider registry: `Ask::Provider.register(name, klass)`
-- Model resolution: `Ask::Provider.for("gpt-4o")` → finds provider from catalog
+**Reference:** pi/packages/ai/src/providers/simple-options.ts (OAuth config)
+  pi/packages/ai/src/providers/github-copilot-headers.ts (Copilot OAuth)
 
-### 8. Build Ask::ModelCatalog (`lib/ask/models.rb`)
-- Model name → provider mapping
-- `Ask::Models.find("gpt-4o")` → `{provider: :openai, model_id: "gpt-4o"}`
-- `Ask::Models.find("claude-sonnet-4-5")` → `{provider: :anthropic, model_id: "claude-sonnet-4-5"}`
-- Static catalog (hardcoded mapping for known models)
-- Fallback: prefix-based matching for unknown models ("claude-*" → anthropic)
-- Extensible: provider gems register their models on load
+### 4. GitHub Copilot API
 
-### 9. Build Ask::Response (`lib/ask/response.rb`)
-- Value object returned by provider.chat (when not streaming)
-- Attributes: `message`, `tool_calls`, `usage` (input/output tokens, cost)
-- `content` — text content of the response
-- `model` — model that was used
+- **Endpoints:**
+  - Chat: https://api.individual.githubcopilot.com
+  - Enterprise: https://copilot-api.{enterprise-domain}
+  - Token: https://api.{domain}/copilot_internal/v2/token
+- **Reference:** pi/packages/ai/src/providers/github-copilot-headers.ts
+- **Not currently planned but documented for future.** GitHub Copilot uses a
+  custom OAuth flow with device code grant. This could be added to ask-llm-providers
+  as Ask::Provider::GitHubCopilot.
 
-### 10. Test coverage
-- Test Conversation: add messages, serialize to array, role normalization
-- Test Stream: stream chunks, accumulate transcript
-- Test Result: ok/error construction, serialization
-- Test ToolDef: construction, serialization, from tool
-- Test ModelCatalog: model resolution, prefix fallback, registration
-- Test Provider base: subclass must implement interface, registry works
-- Test Errors: each error type carries correct info
-- Test Response: message content, tool calls, usage tracking
+### 5. Vercel AI Gateway
 
-### 11. README
-- Installation
-- Architecture overview with gem map
-- Provider interface documentation
-- Conversation and streaming API
-- Error handling guide
+- **URL:** https://ai-gateway.vercel.sh
+- **Purpose:** Standardized access to multiple providers through one endpoint.
+  Supports OpenAI, Anthropic, Google, and more with a unified API.
+- **Reference:** pi/packages/ai/src/providers/images (uses Vercel for image generation)
+- **How we use it:** Any OpenAI-compatible provider can use ask-openai with
+  base_url: https://ai-gateway.vercel.sh/v1. No separate implementation needed.
 
+### What We Do NOT Build (covered by existing services)
+
+| What | Covered by |
+|---|---|
+| Model catalog / pricing database | models.dev API |
+| Provider wire formats | Provider gems call these directly |
+| OAuth infrastructure | Standard endpoints, Ask::Auth::OAuth |
+| API routing / load balancing | OpenRouter, Vercel AI Gateway |
+| Model registry / discovery | models.dev + provider list endpoints |
+| Pricing calculation | models.dev provides per-model pricing |
+| Rate limiting | Provider APIs do this natively |
+
+### What We DO Build (unique to ask-rb)
+
+| What | Where |
+|---|---|
+| Agent loop with extension system | ask-agent |
+| Rails integration with AR persistence | ask-rails |
+| Service context system (ask-github, etc.) | ask-* service gems |
+| Credential resolution chain | ask-auth |
+| Tool framework + execution tools | ask-tools, ask-tools-shell |
+| Unified provider interface with capabilities | ask-core + ask-llm-providers |
+| Agent-friendly error messages | every gem |
 ## What "Done" Means
 
 - All types implemented and tested
