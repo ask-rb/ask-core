@@ -10,8 +10,6 @@ Gem::Specification.new do |spec|
   spec.description = "Provides Ask::Provider (abstract interface), Ask::Conversation, Ask::Stream, Ask::ModelCatalog, Ask::ToolDef, Ask::Result, and structured error types. Zero runtime dependencies."
   spec.homepage = "https://github.com/ask-rb/ask-core"
   spec.license = "MIT"
-  spec.metadata["allowed_push_host"] = "https://rubygems.pkg.github.com/ask-rb"
-  spec.metadata["allowed_push_host"] = "https://rubygems.pkg.github.com/ask-rb"
 
   spec.required_ruby_version = ">= 3.2"
 
