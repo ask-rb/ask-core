@@ -185,6 +185,14 @@ endpoints.
 - README documents the full API
 - Provider gems can be written against this interface **without changes to the interface**
 
+## Documentation
+
+### Documentation
+- **Update ask-docs** after releasing v0.1.0 — the docs site at github.com/ask-rb/ask-docs must reflect this gems API, usage, and position in the ecosystem.
+- The ask-docs repo has a Jekyll site with sections for each gem under core/, providers/, tools/, agent/.
+- Add or update the relevant page(s) and submit a PR to ask-docs.
+- This is not optional — ask-docs is the public face of the ecosystem.
+
 ## Release Checklist (Required for v0.1.0)
 
 Before declaring this gem done and releasing v0.1.0, verify:
