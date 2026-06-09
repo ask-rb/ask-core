@@ -4,7 +4,7 @@ Gem::Specification.new do |spec|
   spec.name = "ask-core"
   spec.version = Ask::VERSION
   spec.authors = ["Kaka Ruto"]
-  spec.email = ["kaka@anywaye.com"]
+  spec.email = ["kaka@myrrlabs.com"]
 
   spec.summary = "Foundation gem for the ask-rb ecosystem"
   spec.description = "Provides Ask::Provider (abstract interface), Ask::Conversation, Ask::Stream, and model catalog. Zero dependencies."
