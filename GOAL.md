@@ -28,6 +28,55 @@ shipped and stable. The agent stack depends on `ruby_llm` until this gem exists.
 | `Ask::Error` | `lib/ask/errors.rb` | Structured error types |
 
 ## Implementation Steps
+## External Services We Reuse (Do Not Rebuild)
+
+The following existing services handle model metadata, discovery, and catalog data.
+We call them — we do not rebuild them.
+
+### models.dev API
+
+- **URL:** https://models.dev/api.json
+- **Used by:** RubyLLM (production), related model registries
+- **What it provides:** Model names, provider mapping, capabilities (function_calling,
+  structured_output, reasoning, vision), modalities (text, image, audio, pdf, video),
+  pricing, context windows.
+- **How we use it:** Ask::Models fetches this on refresh(), merges with provider-fetched
+  models, caches the result. No static model JSON files to maintain by hand.
+- **Reference implementation:** ruby_llm/lib/ruby_llm/models.rb — fetch_models_dev_models()
+
+### Provider Discovery Endpoints
+
+Each provider serves its own model list. We query these and merge with models.dev data:
+- OpenAI: GET https://api.openai.com/v1/models
+- Anthropic: Built into SDK when possible
+- Google: SDK-based
+- Bedrock: ListFoundationModels / ListInferenceProfiles
+- Mistral: GET https://api.mistral.ai/v1/models
+- Ollama: GET http://localhost:11434/api/tags
+
+Provider-fetched models provide real-time availability; models.dev provides pricing
+and capabilities metadata.
+
+### What We Do NOT Build
+
+- No static model catalog file — models.dev replaces that.
+- No manual pricing database — models.dev provides pricing per model.
+- No custom model metadata format — we merge models.dev data with provider data.
+
+### What We DO Build
+
+- **Model resolution:** Ask::Models.find("gpt-4o") → provider + capabilities
+- **Capability querying:** Ask::Models.capabilities("gpt-4o") → [:chat, :vision, ...]
+- **Caching:** We cache models.dev responses rather than fetching on every request
+- **Fallback:** If models.dev is unreachable, fall back to last known cache
+- **Registration:** ask-llm-providers registers provider models on gem load
+- **Merging:** models.dev data + provider data = complete model info
+
+### Reference
+
+- models.dev integration: ruby_llm/lib/ruby_llm/models.rb
+- Pi's auto-generated catalog: pi/packages/ai/src/image-models.generated.ts
+
 
 ### 1. Define gem scaffold
 - `lib/ask-core.rb` — entry point, requires all components
