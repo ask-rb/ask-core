@@ -62,5 +62,7 @@ module Ask
   class StreamError < Error; end
 
   # Raised when a feature is not supported by the selected provider/model.
+  class CapabilityNotSupported < Error; end
+
   class UnsupportedFeature < Error; end
 end
