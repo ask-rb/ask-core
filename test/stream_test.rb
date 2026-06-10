@@ -28,6 +28,31 @@ class StreamTest < Minitest::Test
     assert_equal 10, chunk.usage[:input_tokens]
   end
 
+  def test_chunk_with_thinking
+    chunk = Ask::Chunk.new(thinking: "Model reasoning here")
+    assert_equal "Model reasoning here", chunk.thinking
+    assert chunk.thinking?
+  end
+
+  def test_chunk_without_thinking
+    chunk = Ask::Chunk.new(content: "Just text")
+    assert_nil chunk.thinking
+    refute chunk.thinking?
+  end
+
+  def test_chunk_empty_thinking
+    chunk = Ask::Chunk.new(thinking: "")
+    assert_equal "", chunk.thinking
+    refute chunk.thinking?
+  end
+
+  def test_chunk_thinking_and_content
+    chunk = Ask::Chunk.new(content: "Visible text", thinking: "Hidden reasoning")
+    assert_equal "Visible text", chunk.content
+    assert_equal "Hidden reasoning", chunk.thinking
+    assert chunk.thinking?
+  end
+
   def test_stream_accumulation
     stream = Ask::Stream.new
     stream.add(Ask::Chunk.new(content: "Hello "))

@@ -19,12 +19,16 @@ module Ask
     # @return [Hash, nil] raw response data from the provider
     attr_reader :raw
 
-    def initialize(content: nil, tool_calls: nil, finish_reason: nil, usage: nil, raw: nil)
+    # @return [String, nil] reasoning/thinking text from the model (e.g. chain-of-thought)
+    attr_reader :thinking
+
+    def initialize(content: nil, tool_calls: nil, finish_reason: nil, usage: nil, raw: nil, thinking: nil)
       @content = content
       @tool_calls = tool_calls
       @finish_reason = finish_reason
       @usage = usage
       @raw = raw
+      @thinking = thinking
     end
 
     # @return [Boolean] true if this is the final chunk in a stream
@@ -32,6 +36,9 @@ module Ask
 
     # @return [Boolean] true if this chunk contains tool calls
     def tool_call? = @tool_calls&.any? == true
+
+    # @return [Boolean] true if this chunk contains thinking/reasoning content
+    def thinking? = @thinking.to_s.length > 0
 
     # @return [String] text content as a plain string
     def to_s
