@@ -54,14 +54,29 @@ module Ask
     def tool? = @role == :tool
 
     # Convert to a hash suitable for provider wire format serialization.
-    # Omits nil-valued keys.
+    # Omits nil-valued keys. Tool calls are converted from internal Hash format
+    # ({id => object with .id, .name, .arguments}) to the provider API Array format
+    # ([{id:, type:, function: {name:, arguments:}}]).
     # @return [Hash]
     def to_h
       base = { role: @role }
       base[:content] = @content if @content
       base[:name] = @name if @name
       base[:tool_call_id] = @tool_call_id if @tool_call_id
-      base[:tool_calls] = @tool_calls if @tool_calls
+
+      if @tool_calls
+        base[:tool_calls] = @tool_calls.is_a?(Array) ? @tool_calls : @tool_calls.map do |id, tc|
+          {
+            id: tc.respond_to?(:id) ? tc.id : id,
+            type: "function",
+            function: {
+              name: tc.respond_to?(:name) ? tc.name : tc.to_s,
+              arguments: tc.respond_to?(:arguments) ? tc.arguments : "{}"
+            }
+          }
+        end
+      end
+
       base
     end
 
