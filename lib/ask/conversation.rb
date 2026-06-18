@@ -65,15 +65,32 @@ module Ask
       base[:tool_call_id] = @tool_call_id if @tool_call_id
 
       if @tool_calls
-        base[:tool_calls] = @tool_calls.is_a?(Array) ? @tool_calls : @tool_calls.map do |id, tc|
-          {
-            id: tc.respond_to?(:id) ? tc.id : id,
-            type: "function",
-            function: {
-              name: tc.respond_to?(:name) ? tc.name : tc.to_s,
-              arguments: tc.respond_to?(:arguments) ? tc.arguments : "{}"
-            }
-          }
+        base[:tool_calls] = @tool_calls.is_a?(Array) ? @tool_calls : @tool_calls.map do |id_val, tc|
+          tc_id = if tc.respond_to?(:id)
+            tc.id
+          elsif tc.is_a?(Hash)
+            tc[:id] || tc["id"] || id_val
+          else
+            id_val
+          end
+
+          tc_name = if tc.respond_to?(:name)
+            tc.name
+          elsif tc.is_a?(Hash)
+            tc.dig(:function, :name) || tc.dig("function", "name") || tc[:name] || tc["name"] || id_val
+          else
+            id_val
+          end
+
+          tc_args = if tc.respond_to?(:arguments)
+            tc.arguments
+          elsif tc.is_a?(Hash)
+            tc.dig(:function, :arguments) || tc.dig("function", "arguments") || tc[:arguments] || tc["arguments"] || "{}"
+          else
+            "{}"
+          end
+
+          { id: tc_id, type: "function", function: { name: tc_name, arguments: tc_args } }
         end
       end
 
