@@ -83,9 +83,10 @@ module Ask
           end
 
           tc_args = if tc.respond_to?(:arguments)
-            tc.arguments
+            tc.arguments.is_a?(String) ? tc.arguments : JSON.generate(tc.arguments)
           elsif tc.is_a?(Hash)
-            tc.dig(:function, :arguments) || tc.dig("function", "arguments") || tc[:arguments] || tc["arguments"] || "{}"
+            raw = tc.dig(:function, :arguments) || tc.dig("function", "arguments") || tc[:arguments] || tc["arguments"] || "{}"
+            raw.is_a?(String) ? raw : JSON.generate(raw)
           else
             "{}"
           end
