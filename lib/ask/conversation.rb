@@ -248,6 +248,15 @@ module Ask
     # @return [Array<Ask::Message>] tool messages
     def tool_messages = by_role(:tool)
 
+    # Walk message history to find a matching assistant tool call for a tool result.
+    # Returns the assistant message that contains the tool call, or nil.
+    def find_matching_tool_call(tool_call_id)
+      @messages.reverse.find do |m|
+        next unless m.role == :assistant && m.tool_calls.is_a?(Hash)
+        m.tool_calls.key?(tool_call_id)
+      end
+    end
+
     # Deep copy of this conversation.
     # @return [Ask::Conversation]
     def dup

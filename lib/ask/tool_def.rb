@@ -30,6 +30,25 @@ module Ask
           provider_params: tool.provider_params
         )
       end
+
+      # Safely create a ToolDef, returning nil instead of raising on invalid input.
+      # Calls the optional log block with the error message if creation fails.
+      #
+      # @yield [message] called with the error message if creation fails
+      # @yieldparam message [String] the error description
+      # @return [Ask::ToolDef, nil] the created ToolDef or nil on failure
+      def safe_create(name:, description: "", parameters: nil, provider_params: {}, &log_block)
+        new(name: name, description: description, parameters: parameters, provider_params: provider_params)
+      rescue InvalidToolDefinition => e
+        msg = e.message
+        if log_block
+          log_block.call(msg)
+        else
+          $stderr.puts "[ask-core] ToolDef.safe_create skipped: #{msg}"
+        end
+        nil
+      end
+
     end
 
     # @return [String] tool name (must match /\\A[a-zA-Z_][a-zA-Z0-9_-]*\\z/)

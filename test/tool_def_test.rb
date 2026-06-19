@@ -100,4 +100,23 @@ class ToolDefTest < Minitest::Test
     tool = Ask::ToolDef.new(name: "my_tool")
     assert_match(/ToolDef.*my_tool/, tool.inspect)
   end
+  def test_safe_create_returns_tool_def
+    tool = Ask::ToolDef.safe_create(name: "my_tool", description: "Safe tool")
+    refute_nil tool
+    assert_equal "my_tool", tool.name
+    assert_equal "Safe tool", tool.description
+  end
+
+  def test_safe_create_returns_nil_on_invalid_name
+    tool = Ask::ToolDef.safe_create(name: "")
+    assert_nil tool
+  end
+
+  def test_safe_create_calls_log_block_on_failure
+    logged = nil
+    tool = Ask::ToolDef.safe_create(name: "bad name") { |msg| logged = msg }
+    assert_nil tool
+    assert_match /must start with/, logged
+  end
+
 end

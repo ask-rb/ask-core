@@ -1,16 +1,11 @@
 # Changelog
 
-## 0.1.0 (2026-06-09)
+## 0.2.0 (2026-06-21)
 
-### Added
+- Added `ToolDef.safe_create` — returns nil instead of raising on invalid tool definitions, with optional log block
+- Added `Conversation#find_matching_tool_call` — walks message history to find matching assistant tool call by ID
+- Fixed documentation typos and improved YARD annotations
 
-- `Ask::Provider` — abstract base class for LLM providers with registration and resolution
-- `Ask::Conversation` — ordered message container with role normalization
-- `Ask::Message` — immutable message with role/content/tool metadata
-- `Ask::Stream` / `Ask::Chunk` — streaming primitives for incremental responses
-- `Ask::ModelCatalog` / `Ask::ModelInfo` — model registry with models.dev integration
-- `Ask::ToolDef` — immutable tool metadata struct for function calling
-- `Ask::Result` — standardized tool execution return values
-- `Ask::Error` — comprehensive error type hierarchy (18 error classes)
-- Zero runtime dependencies (stdlib only)
-- >90% test coverage with Minitest (124 tests, 224 assertions)
+## 0.1.5
+
+- Initial stable release
