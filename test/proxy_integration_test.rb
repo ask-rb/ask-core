@@ -6,8 +6,14 @@ $LOAD_PATH.unshift File.expand_path("../ask-llm-providers/lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../ask-auth/lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../ask-tools/lib", __dir__)
 
-require "ostruct"
-require "ask-llm-providers"
+# Guard: skip unless optional dependencies are available
+begin
+  require "ostruct"
+  require "ask-llm-providers"
+rescue LoadError
+  $stderr.puts "Skipping proxy_integration_test (ask-llm-providers not installed)"
+  return
+end
 require "ask/agent"
 require "minitest/autorun"
 require "json"
