@@ -1,6 +1,7 @@
 source "https://rubygems.org"
 
 gemspec
+gem "ostruct"
 
 group :test do
   gem "minitest", "~> 5.25"
