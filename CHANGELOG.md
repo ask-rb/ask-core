@@ -1,3 +1,7 @@
+## [0.2.1] - 2026-06-25
+
+### Changed
+- Testing infrastructure: rubocop, overcommit, bin/setup, gemspec validation, SimpleCov, CI matrix, .minitest config
 # Changelog
 
 ## 0.2.0 (2026-06-21)
