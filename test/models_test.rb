@@ -84,16 +84,30 @@ class ModelCatalogTest < Minitest::Test
   end
 
   def test_find_with_provider
-    model = @catalog.find("gpt-4o", "openai")
+    model = @catalog.find("gpt-4o", provider: "openai")
     assert_equal "gpt-4o", model.id
   end
 
   def test_find_wrong_provider
-    assert_raises(Ask::ModelNotFound) { @catalog.find("gpt-4o", "anthropic") }
+    assert_raises(Ask::ModelNotFound) { @catalog.find("gpt-4o", provider: "anthropic") }
   end
 
   def test_find_unknown
     assert_raises(Ask::ModelNotFound) { @catalog.find("nonexistent") }
+  end
+
+  def test_where_returns_all_matches
+    gpt_openai = Ask::ModelInfo.new(id: "gpt-4o", provider: "openai")
+    gpt_azure = Ask::ModelInfo.new(id: "gpt-4o", provider: "azure")
+    catalog = Ask::ModelCatalog.new([gpt_openai, gpt_azure])
+
+    results = catalog.where("gpt-4o")
+    assert_equal 2, results.size
+    assert_equal %w[openai azure], results.map(&:provider)
+  end
+
+  def test_where_returns_empty_array
+    assert_equal [], @catalog.where("nonexistent")
   end
 
   def test_chat_models
@@ -144,14 +158,5 @@ class ModelCatalogTest < Minitest::Test
     Ask::ModelCatalog.reset_instance!
     refute_nil Ask::ModelCatalog.instance
     assert_instance_of Ask::ModelCatalog, Ask::ModelCatalog.instance
-  end
-
-  def test_preferred_match_prefers_ordered_providers
-    gpt_openai = Ask::ModelInfo.new(id: "gpt-4o", provider: "openai")
-    gpt_azure = Ask::ModelInfo.new(id: "gpt-4o", provider: "azure")
-    catalog = Ask::ModelCatalog.new([gpt_openai, gpt_azure])
-
-    found = catalog.find("gpt-4o")
-    assert_equal "openai", found.provider
   end
 end

@@ -256,12 +256,11 @@ module Ask
     end
   end
 
-  # Catalog of available AI models. Provides model resolution by name/ID,
-  # filtering by capability, and refresh from the models.dev API.
+  # Catalog of available AI models.
   #
-  #   Ask::ModelCatalog.find("gpt-4o")
-  #   Ask::ModelCatalog.chat_models
-  #   Ask::ModelCatalog.refresh!
+  #   Ask::ModelCatalog.find("gpt-4o")                  # => ModelInfo or raises
+  #   Ask::ModelCatalog.find("gpt-4o", provider: "openai")  # => ModelInfo or raises
+  #   Ask::ModelCatalog.where("gpt-4o")                 # => [ModelInfo, ...] (all matches)
   #
   class ModelCatalog
     include Enumerable
@@ -269,17 +268,8 @@ module Ask
     # @return [String] URL for the models.dev API
     MODELS_DEV_URL = "https://models.dev/api.json".freeze
 
-    # Ordered provider preference for disambiguation.
-    PROVIDER_PREFERENCE = %w[
-      openai anthropic gemini vertexai bedrock
-      opencode opencode_go
-      openrouter deepseek mistral perplexity xai
-      mimo
-      azure ollama gpustack github
-    ].freeze
-
     # Methods delegated to the singleton instance.
-    DELEGATES = %i[all each find chat_models embedding_models
+    DELEGATES = %i[all each find where chat_models embedding_models
                    audio_models image_models by_family by_provider
                    refresh!].freeze
 
@@ -319,17 +309,26 @@ module Ask
       @models.each(&block)
     end
 
-    # Find a model by ID, optionally scoped to a provider.
+    # Find a single model by ID. Scopes to provider when given.
     # @param model_id [String] model identifier
-    # @param provider [String, nil] provider slug
+    # @param provider [String, nil] provider slug (optional keyword)
     # @return [Ask::ModelInfo]
-    # @raise [ModelNotFound] if the model is not found
-    def find(model_id, provider = nil)
+    # @raise [ModelNotFound] if no matching model is found
+    def find(model_id, provider: nil)
       if provider
-        find_with_provider(model_id, provider.to_s)
+        @models.find { |m| m.id == model_id && m.provider == provider.to_s } ||
+          raise(ModelNotFound, "Model #{model_id.inspect} not found for provider #{provider.inspect}.")
       else
-        find_without_provider(model_id)
+        @models.find { |m| m.id == model_id } ||
+          raise(ModelNotFound, "Unknown model: #{model_id.inspect}.")
       end
+    end
+
+    # Find all models matching an ID. Never raises.
+    # @param model_id [String] model identifier
+    # @return [Array<Ask::ModelInfo>] matching models (empty if none)
+    def where(model_id)
+      @models.select { |m| m.id == model_id }
     end
 
     # @return [Ask::ModelCatalog] new catalog containing only chat models
@@ -390,31 +389,6 @@ module Ask
     end
 
     private
-
-    def find_with_provider(model_id, provider)
-      exact = @models.find { |m| m.id == model_id && m.provider == provider }
-      return exact if exact
-
-      @models.find { |m| m.id == model_id && m.provider == provider } ||
-        raise(ModelNotFound, "Model #{model_id.inspect} not found for provider #{provider.inspect}. " \
-                             "Try ModelCatalog.refresh! to update the catalog.")
-    end
-
-    def find_without_provider(model_id)
-      matches = @models.select { |m| m.id == model_id }
-      return preferred_match(matches) if matches.any?
-
-      raise ModelNotFound, "Unknown model: #{model_id.inspect}. " \
-                           "Try ModelCatalog.refresh! to update the catalog."
-    end
-
-    def preferred_match(candidates)
-      return candidates.first if candidates.size == 1
-
-      candidates.min_by do |model|
-        PROVIDER_PREFERENCE.index(model.provider) || PROVIDER_PREFERENCE.length
-      end
-    end
 
     def fetch_from_models_dev(timeout: 10)
       uri = URI(MODELS_DEV_URL)

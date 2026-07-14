@@ -1,3 +1,9 @@
+## [0.2.3] — 2026-07-14
+
+### Changed
+- `Ask::ModelCatalog.find(model_id)` now returns `Array<Ask::ModelInfo>` (all matches) — provider preference disambiguation is removed. Provider-scoped `find(model_id, provider)` still returns a single model or raises.
+- Removed `Ask::ModelCatalog::PROVIDER_PREFERENCE`. No preference list anywhere — all providers and models are treated equally.
+
 ## [0.2.2] — 2026-07-14
 
 ### Added
