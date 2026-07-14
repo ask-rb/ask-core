@@ -1,4 +1,9 @@
-## [0.2.1] - 2026-06-25
+## [0.2.2] — 2026-07-14
+
+### Added
+- `Ask::ModelCatalog::PROVIDER_PREFERENCE` — includes `opencode`, `opencode_go`, `mimo` for proper disambiguation of models served by aggregator providers.
+
+## [0.2.1] — 2026-06-25
 
 ### Changed
 - Testing infrastructure: rubocop, overcommit, bin/setup, gemspec validation, SimpleCov, CI matrix, .minitest config

@@ -272,7 +272,9 @@ module Ask
     # Ordered provider preference for disambiguation.
     PROVIDER_PREFERENCE = %w[
       openai anthropic gemini vertexai bedrock
+      opencode opencode_go
       openrouter deepseek mistral perplexity xai
+      mimo
       azure ollama gpustack github
     ].freeze
 
