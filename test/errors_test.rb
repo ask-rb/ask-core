@@ -44,6 +44,32 @@ class ErrorsTest < Minitest::Test
     assert Ask::RateLimitError < Ask::Error
   end
 
+  def test_rate_limit_error_with_category
+    error = Ask::RateLimitError.new("Rate limited", category: Ask::RateLimitCategory::VENDOR, rate_limit_type: Ask::RateLimitType::TOKENS, retry_after: 30)
+    assert_equal Ask::RateLimitCategory::VENDOR, error.category
+    assert_equal Ask::RateLimitType::TOKENS, error.rate_limit_type
+    assert_equal 30, error.retry_after
+  end
+
+  def test_rate_limit_error_defaults
+    error = Ask::RateLimitError.new("too fast")
+    assert_nil error.category
+    assert_nil error.rate_limit_type
+    assert_nil error.retry_after
+  end
+
+  def test_rate_limit_category_constants
+    assert_equal :vendor, Ask::RateLimitCategory::VENDOR
+    assert_equal :local, Ask::RateLimitCategory::LOCAL
+  end
+
+  def test_rate_limit_type_constants
+    assert_equal :requests, Ask::RateLimitType::REQUESTS
+    assert_equal :tokens, Ask::RateLimitType::TOKENS
+    assert_equal :concurrent, Ask::RateLimitType::CONCURRENT
+    assert_equal :budget, Ask::RateLimitType::BUDGET
+  end
+
   def test_unauthorized
     assert Ask::Unauthorized < Ask::Error
   end

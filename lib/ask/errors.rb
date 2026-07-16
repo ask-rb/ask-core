@@ -28,9 +28,6 @@ module Ask
   # Raised when the context window is exceeded.
   class ContextLengthExceeded < Error; end
 
-  # Raised when the API rate limit is hit.
-  class RateLimitError < Error; end
-
   # Raised when authentication fails.
   class Unauthorized < Error; end
 
@@ -40,11 +37,41 @@ module Ask
   # Raised when the service is unavailable.
   class ServiceUnavailable < Error; end
 
+  # Categories for {RateLimitError} — tells you who rate-limited the request.
+  module RateLimitCategory
+    VENDOR = :vendor  # upstream LLM provider (OpenAI, Anthropic, etc.)
+    LOCAL  = :local   # ask-rb's own limiter (ask-auth thresholds)
+  end
+
+  # Rate limit dimension that was exceeded — orthogonal to {RateLimitCategory}.
+  module RateLimitType
+    REQUESTS   = :requests    # requests-per-minute ceiling
+    TOKENS     = :tokens      # tokens-per-minute ceiling
+    CONCURRENT = :concurrent  # max parallel requests
+    BUDGET     = :budget      # spend budget cap
+  end
+
+  # Raised when the API rate limit is hit.
+  # Carries optional category, type, and retry_after for intelligent handling.
+  class RateLimitError < Error
+    # @return [Symbol, nil] who rate-limited (:vendor, :local)
+    attr_reader :category
+
+    # @return [Symbol, nil] which limit was hit (:requests, :tokens, :concurrent, :budget)
+    attr_reader :rate_limit_type
+
+    # @return [Integer, Float, nil] suggested seconds to wait before retrying
+    attr_reader :retry_after
+
+    def initialize(message, category: nil, rate_limit_type: nil, retry_after: nil)
+      @category = category
+      @rate_limit_type = rate_limit_type
+      @retry_after = retry_after
+      super(message)
+    end
+  end
+
   # Raised when a provider's API returns an unexpected response.
-  # @!attribute [r] status_code
-  #   @return [Integer, nil] the HTTP status code
-  # @!attribute [r] response_body
-  #   @return [String, nil] the raw response body
   class ProviderError < Error
     attr_reader :status_code, :response_body
 

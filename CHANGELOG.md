@@ -1,3 +1,9 @@
+## [0.2.4] — 2026-07-17
+
+### Added
+
+- **Rich error categories** — `RateLimitError` now carries `category` (`RateLimitCategory::VENDOR` or `::LOCAL`), `rate_limit_type` (`RateLimitType::REQUESTS`, `::TOKENS`, `::CONCURRENT`, `::BUDGET`), and `retry_after` (seconds) for intelligent error handling. Inspired by LiteLLM's error hierarchy.
+
 ## [0.2.3] — 2026-07-14
 
 ### Changed
