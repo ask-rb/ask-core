@@ -85,16 +85,6 @@ class ProviderEdgeTest < Minitest::Test
     refute prov.remote?
   end
 
-  def test_assume_models_exist_default
-    klass = stub_provider_class
-    refute klass.assume_models_exist?
-  end
-
-  def test_instance_assume_models_exist
-    prov = stub_provider_class.new(stub_config(api_key: "test"))
-    refute prov.assume_models_exist?
-  end
-
   def test_parse_error_default_returns_nil
     prov = stub_provider_class.new(stub_config(api_key: "test"))
     assert_nil prov.parse_error("error body")

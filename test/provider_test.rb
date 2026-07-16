@@ -128,10 +128,6 @@ class ProviderTest < Minitest::Test
     assert_nil provider.parse_error("{}")
   end
 
-  def test_assume_models_exist_default
-    provider = AbstractStubProvider.new(stub_config(api_key: "test"))
-    refute provider.assume_models_exist?
-  end
 end
 
 # A completely abstract provider with no interface methods implemented

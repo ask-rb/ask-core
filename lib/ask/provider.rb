@@ -93,9 +93,6 @@ module Ask
     # @return [Boolean] true if the provider requires a remote API
     def remote? = !local?
 
-    # @return [Boolean] true if all models can be assumed to exist
-    def assume_models_exist? = self.class.assume_models_exist?
-
     # --- Slug / name / capabilities ---
 
     # @return [String] lowercased provider slug
@@ -199,10 +196,7 @@ module Ask
         !local?
       end
 
-      # @return [Boolean] whether all models can be assumed to exist
-      def assume_models_exist?
-        false
-      end
+
 
       private
 
