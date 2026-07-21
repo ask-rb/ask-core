@@ -1,3 +1,42 @@
+## [0.3.0] — 2026-07-21
+
+### Added
+
+- **Pluggable state abstraction** — `Ask::State::Adapter` defines a unified interface for key-value storage, distributed locking, message queues, and ordered lists. `Ask::State::Memory` provides an in-process, thread-safe implementation backed by Hash.
+
+  ```ruby
+  store = Ask::State::Memory.new
+
+  # Key-value with optional TTL
+  store.set("key", "value", ttl: 60)
+  store.get("key")
+
+  # Distributed locking
+  lock = store.acquire_lock("resource", ttl: 10)
+  store.release_lock("resource", lock)
+
+  # Message queues
+  store.enqueue("queue", { task: "check" })
+  store.dequeue("queue")
+
+  # Ordered lists
+  store.list_append("list", "item", max_length: 100)
+  store.list_range("list", 0, -1)
+  store.list_remove("list", "item")
+  ```
+
+  The adapter pattern mirrors `Ask::Provider` — define the contract in ask-core, provide implementations in separate gems. Production backends (Redis, PostgreSQL) can be added by any gem without modifying ask-core.
+
+  Data types: `Ask::State::Lock` (with `#expired?`), `Ask::State::QueueEntry`.
+
+### Changed
+
+- **ask-agent's `Persistence::Base` now wraps `Ask::State::Adapter`** — session persistence is backed by the unified state interface instead of a standalone abstract class. `Persistence::InMemory` delegates to `Ask::State::Memory`. Backward compatible — no API changes for users.
+
+### Tested
+
+- 34 new tests for `Ask::State::Adapter` + `Ask::State::Memory`: key-value operations, TTL expiry, thread safety, locking semantics, queue FIFO order, list management, adapter subclassing, and the base class contract.
+
 ## [0.2.4] — 2026-07-17
 
 ### Added
