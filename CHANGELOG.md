@@ -1,3 +1,29 @@
+## [0.4.0] — 2026-07-21
+
+### Added
+
+- **Provider-executed tools** — `Ask::ProviderTool` value objects for configuring built-in tools that run on the LLM provider's infrastructure (web search, file search, code execution). Supports factory methods for OpenAI's built-in tools.
+
+  ```ruby
+  Ask::ProviderTool.web_search(search_context_size: "high")
+  Ask::ProviderTool.file_search(vector_store_ids: ["vs_abc"], max_num_results: 10)
+  Ask::ProviderTool.code_interpreter(file_ids: ["file_1"])
+  ```
+
+  Provider tools are identified by a fully qualified `id` (e.g. `"openai.web_search"`) and carry provider-specific `args`. They are `frozen` value objects with equality based on `id` + `args`.
+
+### Changed
+
+- **ask-llm-providers OpenAI** — `chat` now splits provider tools from regular tools. When provider tools are present, the Responses API is used instead of Chat Completions. Regular function tools continue to use the existing Chat Completions path.
+- **ask-agent Loop** — `ResponseMessage` now carries `tool_results` for pre-computed provider-executed results. The loop adds them directly to the conversation without local execution, then continues with any remaining user tool calls.
+- **ResponseMessage** — `tool_results` field added with default `{}`. All existing call sites are backward compatible via the custom `initialize` with keyword defaults.
+
+### Tested
+
+- 13 new tests for `Ask::ProviderTool`: creation, factory methods, args, frozen, equality, flags.
+- 13 new integration tests for provider-executed tools: loop handling with mixed tools, only provider tools, tool splitting in OpenAI provider, Responses API tool formatting.
+- Full test suite: 248 ask-core tests, 329 ask-agent tests — 0 failures.
+
 ## [0.3.0] — 2026-07-21
 
 ### Added
