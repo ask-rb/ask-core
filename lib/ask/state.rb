@@ -168,6 +168,23 @@ module Ask
       def close
         # no-op by default
       end
+
+      # -- Glob pattern helpers --
+
+      # Convert a glob pattern (*, ?) to a SQL LIKE pattern.
+      # @param pattern [String] glob pattern (e.g., "session:*")
+      # @return [String] LIKE pattern (e.g., "session:%")
+      def self.glob_to_like(pattern)
+        pattern.gsub("*", "%").gsub("?", "_")
+      end
+
+      # Convert a glob pattern (*, ?) to a Regexp.
+      # @param pattern [String] glob pattern (e.g., "session:*")
+      # @return [Regexp] matching regex (e.g., /\Asession:.*\z/)
+      def self.glob_to_regex(pattern)
+        escaped = Regexp.escape(pattern)
+        Regexp.new("\\A#{escaped.gsub("\\*", ".*").gsub("\\?", ".")}\\z")
+      end
     end
 
     # In-process state backend backed by a Hash.
@@ -252,7 +269,7 @@ module Ask
           keys = active.keys.map(&:to_s)
           return keys unless pattern
 
-          regex = glob_to_regex(pattern)
+	          regex = self.class.glob_to_regex(pattern)
           keys.select { |k| k.match?(regex) }
         end
       end
@@ -363,10 +380,9 @@ module Ask
       private
 
       # Convert a glob pattern (*, ?) to a Regexp.
+      # Delegates to the shared class method for consistency.
       def glob_to_regex(pattern)
-        escaped = Regexp.escape(pattern)
-        regex_str = escaped.gsub("\\*", ".*").gsub("\\?", ".")
-        Regexp.new("\\A#{regex_str}\\z")
+        self.class.glob_to_regex(pattern)
       end
     end
   end
