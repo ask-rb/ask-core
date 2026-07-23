@@ -65,8 +65,24 @@ module Ask
         raise NotImplementedError
       end
 
-      # Remove all keys from the store.
+      # Remove all keys from the store (key-value only by default).
+      # Subclasses should override to also clear locks, queues, and lists.
       def clear
+        raise NotImplementedError
+      end
+
+      # Check if a key exists and has not expired.
+      # @param key [String] the key
+      # @return [Boolean] true if the key exists and is not expired
+      def exists?(key)
+        !get(key).nil?
+      end
+
+      # Return all non-expired keys, optionally filtered by a glob pattern.
+      # Glob syntax: * matches any sequence, ? matches any single character.
+      # @param pattern [String, nil] optional glob pattern (e.g., "session:*")
+      # @return [Array<String>] matching keys
+      def keys(pattern: nil)
         raise NotImplementedError
       end
 
@@ -211,6 +227,33 @@ module Ask
       def clear
         @mutex.synchronize do
           @data.clear
+          @locks.clear
+          @queues.clear
+          @lists.clear
+        end
+      end
+
+      def exists?(key)
+        @mutex.synchronize do
+          expiry = @data[key]&.dig(:expires_at)
+          return false if expiry && Time.now >= expiry
+          @data.key?(key)
+        end
+      end
+
+      def keys(pattern: nil)
+        @mutex.synchronize do
+          # Filter out expired keys
+          active = @data.select do |_k, v|
+            expiry = v[:expires_at]
+            expiry.nil? || Time.now < expiry
+          end
+
+          keys = active.keys.map(&:to_s)
+          return keys unless pattern
+
+          regex = glob_to_regex(pattern)
+          keys.select { |k| k.match?(regex) }
         end
       end
 
@@ -315,6 +358,15 @@ module Ask
           @queues.clear
           @lists.clear
         end
+      end
+
+      private
+
+      # Convert a glob pattern (*, ?) to a Regexp.
+      def glob_to_regex(pattern)
+        escaped = Regexp.escape(pattern)
+        regex_str = escaped.gsub("\\*", ".*").gsub("\\?", ".")
+        Regexp.new("\\A#{regex_str}\\z")
       end
     end
   end
