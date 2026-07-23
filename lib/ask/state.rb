@@ -65,6 +65,11 @@ module Ask
         raise NotImplementedError
       end
 
+      # Remove all keys from the store.
+      def clear
+        raise NotImplementedError
+      end
+
       # Atomically set a value only if the key does not already exist.
       # @param key [String] the key
       # @param value [Object] the value
@@ -200,6 +205,12 @@ module Ask
             expires_at: ttl ? Time.now + ttl : nil
           }
           true
+        end
+      end
+
+      def clear
+        @mutex.synchronize do
+          @data.clear
         end
       end
 

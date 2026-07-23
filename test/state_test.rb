@@ -241,12 +241,26 @@ class StateTest < Minitest::Test
 
   # -- Adapter interface --
 
+  def test_clear
+    @store.set("a", 1)
+    @store.set("b", 2)
+    @store.clear
+    assert_nil @store.get("a")
+    assert_nil @store.get("b")
+  end
+
+  def test_clear_empty_store
+    @store.clear
+    assert_nil @store.get("anything")
+  end
+
   def test_adapter_base_raises_not_implemented
     adapter = Ask::State::Adapter.new
     assert_raises(NotImplementedError) { adapter.get("k") }
     assert_raises(NotImplementedError) { adapter.set("k", "v") }
     assert_raises(NotImplementedError) { adapter.delete("k") }
     assert_raises(NotImplementedError) { adapter.set_if_not_exists("k", "v") }
+    assert_raises(NotImplementedError) { adapter.clear }
     assert_raises(NotImplementedError) { adapter.acquire_lock("k") }
     assert_raises(NotImplementedError) { adapter.release_lock("k", nil) }
     assert_raises(NotImplementedError) { adapter.enqueue("q", "v") }
