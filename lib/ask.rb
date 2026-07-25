@@ -8,6 +8,7 @@ require_relative "ask/version"
 # Ask::Conversation is a message container with role normalization.
 # Ask::Stream provides streaming primitives for incremental responses.
 # Ask::ModelCatalog resolves model names to provider metadata.
+# Ask::Document is a text+metadata value object for RAG pipelines.
 # Ask::ToolDef is an immutable tool definition struct.
 # Ask::Result standardizes tool execution return values.
 # Ask::Error provides structured error types.
@@ -21,5 +22,6 @@ require_relative "ask/stream"
 require_relative "ask/conversation"
 require_relative "ask/provider"
 require_relative "ask/models"
+require_relative "ask/document"
 require_relative "ask/state"
 require_relative "ask/provider_tool"

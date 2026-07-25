@@ -1,3 +1,25 @@
+## [0.6.0] — 2026-07-26
+
+### Added
+
+- **`Ask::Document`** — a new frozen value object representing text content with metadata. Used as the universal currency in RAG pipelines: loaded by document loaders, split by text splitters, embedded and retrieved by vector stores. Immutable, equality-checked by content+metadata, and JSON-serializable.
+
+  ```ruby
+  doc = Ask::Document.new(
+    content: "Ruby was created by Matz in 1995.",
+    metadata: { source: "history.pdf", page: 3 }
+  )
+  doc.content   # => "Ruby was created by Matz in 1995."
+  doc.metadata  # => { source: "history.pdf", page: 3 }
+  doc.to_h      # => { content: "...", metadata: { source: "history.pdf", page: 3 } }
+  ```
+
+## [0.5.0] — 2026-07-22
+
+### Added
+
+- `Ask::CostCalculator` — compute API costs from model pricing data.
+
 ## [0.4.0] — 2026-07-21
 
 ### Added
