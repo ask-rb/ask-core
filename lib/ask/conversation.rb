@@ -9,8 +9,15 @@ module Ask
     # @return [Symbol] message role (:system, :user, :assistant, :tool)
     attr_reader :role
 
-    # @return [String, nil] message text content
+    # @return [String, nil] message text content. For multi-modal messages
+    #   this is the concatenation of all text blocks. See {#content_blocks}
+    #   for the full structured content.
     attr_reader :content
+
+    # @return [Array<Ask::Content::Text, Ask::Content::Image, ...>, nil]
+    #   structured content blocks for multi-modal messages. +nil+ when the
+    #   message was created with a plain string +content:+ (backward compatible).
+    attr_reader :content_blocks
 
     # @return [String, nil] optional participant name (for multi-agent scenarios)
     attr_reader :name
@@ -24,15 +31,43 @@ module Ask
     # @return [Hash] arbitrary metadata attached to this message
     attr_reader :metadata
 
+    # Create a new message.
+    #
+    # @param role [Symbol, String] message role
+    # @param content [String, Array<Ask::Content>, nil] message text or array
+    #   of content blocks. When an Array is given, each element must be one of
+    #   the {Ask::Content} types. +content+ will be set to the plain text
+    #   representation; use {#content_blocks} to access the structured blocks.
+    # @param name [String, nil] participant name
+    # @param tool_call_id [String, nil] tool call ID this message responds to
+    # @param tool_calls [Array<Hash>, nil] tool call invocations
+    # @param metadata [Hash] arbitrary metadata
     def initialize(role:, content: nil, name: nil, tool_call_id: nil, tool_calls: nil, metadata: {})
       @role = normalize_role!(role)
-      @content = content
       @name = normalize_name(name)
       @tool_call_id = tool_call_id
       @tool_calls = tool_calls
       @metadata = metadata.dup.freeze
+
+      if content.is_a?(Array)
+        validate_content_blocks!(content)
+        @content_blocks = content.map(&:freeze).freeze
+        @content = extract_text_from_blocks(@content_blocks)
+      else
+        @content = content
+        @content_blocks = nil
+      end
+
       validate!
       freeze
+    end
+
+    # @return [Boolean] true if this message contains non-text content blocks
+    #   (images, audio, video, or files).
+    def multimodal?
+      return false unless @content_blocks
+
+      @content_blocks.any? { |b| !b.is_a?(Content::Text) && b.is_a?(Content::Block) }
     end
 
     # @return [Boolean] true if this message contains tool calls
@@ -54,15 +89,23 @@ module Ask
     def tool? = @role == :tool
 
     # Convert to a hash suitable for provider wire format serialization.
-    # Omits nil-valued keys. Tool calls are converted from internal Hash format
-    # ({id => object with .id, .name, .arguments}) to the provider API Array format
-    # ([{id:, type:, function: {name:, arguments:}}]).
+    # For multi-modal messages, +:content+ is an array of content block hashes.
+    # For plain text messages, +:content+ is a string (backward compatible).
+    #
+    # Each content block hash includes a +:type+ key for discrimination.
+    # Providers can use these to build their wire format.
+    #
     # @return [Hash]
     def to_h
       base = { role: @role }
-      base[:content] = @content if @content
       base[:name] = @name if @name
       base[:tool_call_id] = @tool_call_id if @tool_call_id
+
+      if @content_blocks
+        base[:content] = @content_blocks.map(&method(:serialize_content_block))
+      else
+        base[:content] = @content if @content
+      end
 
       if @tool_calls
         base[:tool_calls] = @tool_calls.is_a?(Array) ? @tool_calls : @tool_calls.map do |id_val, tc|
@@ -98,26 +141,61 @@ module Ask
       base
     end
 
-    # @return [Boolean] true if role, content, name, and tool metadata all match
+    # @return [Boolean] true if role, content/block, name, and tool metadata all match
     def ==(other)
       return false unless other.is_a?(Message)
 
       @role == other.role && @content == other.content &&
+        @content_blocks == other.content_blocks &&
         @name == other.name && @tool_call_id == other.tool_call_id &&
         @tool_calls == other.tool_calls
     end
     alias eql? ==
 
     def hash
-      [@role, @content, @name, @tool_call_id, @tool_calls].hash
+      [@role, @content, @content_blocks, @name, @tool_call_id, @tool_calls].hash
     end
 
     # @return [String]
     def inspect
-      "#<Ask::Message role=#{@role.inspect} content=#{@content && @content.length > 57 ? @content[0,57].inspect + "..." : @content.inspect}>"
+      label = multimodal? ? "multimodal" : (@content_blocks ? "rich" : "text")
+      preview = if @content_blocks
+        blk = @content_blocks.find { |b| b.is_a?(Content::Text) }
+        blk ? preview_text(blk.text) : label
+      elsif @content
+        @content.length > 57 ? "#{@content[0,57]}..." : @content
+      end
+      "#<Ask::Message role=#{@role.inspect} #{label} #{preview.inspect}>"
+    end
+
+    def preview_text(text)
+      text.length > 57 ? "#{text[0, 57]}..." : text
     end
 
     private
+
+    def serialize_content_block(block)
+      block.respond_to?(:to_h) ? block.to_h : { type: "unknown", data: block.to_s }
+    end
+
+    def validate_content_blocks!(blocks)
+      raise ArgumentError, "Content blocks must be an Array" unless blocks.is_a?(Array)
+      raise ArgumentError, "Content blocks cannot be empty" if blocks.empty?
+
+      blocks.each_with_index do |block, idx|
+        next if block.is_a?(Content::Block)
+
+        raise ArgumentError,
+              "Invalid content block at index #{idx}: " \
+              "expected an Ask::Content type (Text, Image, Audio, Video, or File), " \
+              "got #{block.class}"
+      end
+    end
+
+    def extract_text_from_blocks(blocks)
+      texts = blocks.select { |b| b.is_a?(Content::Text) }.map(&:text)
+      texts.empty? ? nil : texts.join("\n")
+    end
 
     def normalize_role!(role)
       sym = role.to_s.downcase.to_sym
@@ -164,15 +242,23 @@ module Ask
     alias add <<
 
     # Add a system message.
-    # @param text [String] message content
+    # @param text [String, Array<Ask::Content>] message content or content blocks
     # @return [self]
     def system(text, **options)
       self << Message.new(role: :system, content: text, **options)
     end
 
     # Add a user message.
-    # @param text [String] message content
+    # @param text [String, Array<Ask::Content>] message content or content blocks.
+    #   Pass an Array of {Ask::Content} objects for multi-modal messages.
     # @return [self]
+    # @example Plain text
+    #   conv.user("Hello")
+    # @example Multi-modal
+    #   conv.user([
+    #     Ask::Content::Text.new("What's in this image?"),
+    #     Ask::Content::Image.new(url: "https://example.com/photo.jpg", mime_type: "image/jpeg")
+    #   ])
     def user(text, **options)
       self << Message.new(role: :user, content: text, **options)
     end
@@ -260,7 +346,16 @@ module Ask
     # Deep copy of this conversation.
     # @return [Ask::Conversation]
     def dup
-      Conversation.new(@messages.map { |m| Message.new(**m.to_h) })
+      Conversation.new(@messages.map { |m|
+        opts = { role: m.role, name: m.name, tool_call_id: m.tool_call_id,
+                 tool_calls: m.tool_calls, metadata: m.metadata }
+        if m.content_blocks
+          opts[:content] = m.content_blocks.dup
+        else
+          opts[:content] = m.content
+        end
+        Message.new(**opts)
+      })
     end
 
     # @return [String]
@@ -271,7 +366,13 @@ module Ask
     private
 
     def build_message(attrs)
-      attrs.is_a?(Hash) ? Message.new(**attrs) : Message.new(role: :user, content: attrs.to_s)
+      if attrs.is_a?(Hash)
+        Message.new(**attrs)
+      elsif attrs.is_a?(Array)
+        Message.new(role: :user, content: attrs)
+      else
+        Message.new(role: :user, content: attrs.to_s)
+      end
     end
   end
 end

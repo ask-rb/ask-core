@@ -1,8 +1,44 @@
-## [0.6.0] — 2026-07-26
+## [0.7.0] — 2026-07-26
 
 ### Added
 
-- **`Ask::Document`** — a new frozen value object representing text content with metadata. Used as the universal currency in RAG pipelines: loaded by document loaders, split by text splitters, embedded and retrieved by vector stores. Immutable, equality-checked by content+metadata, and JSON-serializable.
+- **Multi-modal content types** — `Ask::Content` module with `Text`, `Image`, `Audio`, `Video`, and `File` value objects. Each is frozen, comparable, and serializable via `#to_h`.
+
+  ```ruby
+  Ask::Content::Text.new("What's in this image?")
+  Ask::Content::Image.new(url: "https://example.com/photo.jpg", mime_type: "image/jpeg")
+  Ask::Content::Audio.new(url: "https://example.com/audio.mp3", mime_type: "audio/mpeg")
+  Ask::Content::Video.new(url: "https://example.com/video.mp4", mime_type: "video/mp4")
+  Ask::Content::File.new(data: "file content", mime_type: "text/plain", filename: "notes.txt")
+  ```
+
+- **`Ask::Message#content_blocks`** — `Message` now accepts an Array of `Ask::Content` objects as `content:`. The `#content` accessor still returns the plain text for backward compatibility. `#content_blocks` returns the structured blocks, `#multimodal?` checks for non-text blocks.
+
+  ```ruby
+  msg = Ask::Message.new(role: :user, content: [
+    Ask::Content::Text.new("What's in this image?"),
+    Ask::Content::Image.new(url: "https://example.com/photo.jpg", mime_type: "image/jpeg")
+  ])
+  msg.multimodal?      # => true
+  msg.content_blocks   # => [Text("What's in this image?"), Image(...)]
+  msg.content          # => "What's in this image?"
+  ```
+
+- **`Ask::Conversation`** — `#user` and `#system` now accept arrays of content blocks directly. `#dup` correctly handles content blocks.
+
+- **`Ask::Content::Block`** — shared base module for all content types. Content blocks respond to `#to_h` for serialization.
+
+### Changed
+
+- `Ask::Message#to_h` now serializes content blocks as an array of typed hashes (`{ type: "text", text: "..." }`, `{ type: "image", url: "...", mime_type: "..." }`, etc.) when the message has content_blocks.
+- `Ask::Message#inspect` updated to show `multimodal`, `rich`, or `text` label.
+
+### Tested
+
+- 311 tests, 611 assertions, 0 failures
+- 69 new tests for Content types, multi-modal messages, serialization, equality, and Conversation integration
+
+## [0.6.0] — 2026-07-26: loaded by document loaders, split by text splitters, embedded and retrieved by vector stores. Immutable, equality-checked by content+metadata, and JSON-serializable.
 
   ```ruby
   doc = Ask::Document.new(

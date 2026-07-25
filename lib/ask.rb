@@ -6,6 +6,7 @@ require_relative "ask/version"
 #
 # Ask::Provider is the abstract base class for LLM providers.
 # Ask::Conversation is a message container with role normalization.
+# Ask::Content provides multi-modal content types (Text, Image, Audio, Video, File).
 # Ask::Stream provides streaming primitives for incremental responses.
 # Ask::ModelCatalog resolves model names to provider metadata.
 # Ask::Document is a text+metadata value object for RAG pipelines.
@@ -16,6 +17,7 @@ module Ask
 end
 
 require_relative "ask/errors"
+require_relative "ask/content"
 require_relative "ask/tool_def"
 require_relative "ask/result"
 require_relative "ask/stream"

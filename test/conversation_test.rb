@@ -211,6 +211,6 @@ class MessageTest < Minitest::Test
 
   def test_inspect
     msg = Ask::Message.new(role: :user, content: "Hello, World!")
-    assert_match(/Message role=:user content="Hello/, msg.inspect)
+    assert_match(/Message role=:user text "Hello/, msg.inspect)
   end
 end
