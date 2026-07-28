@@ -35,7 +35,7 @@ module Ask
     def finished? = !@finish_reason.nil?
 
     # @return [Boolean] true if this chunk contains tool calls
-    def tool_call? = @tool_calls&.any? == true
+    def tool_call? = @tool_calls.respond_to?(:any?) && @tool_calls.any?
 
     # @return [Boolean] true if this chunk contains thinking/reasoning content
     def thinking? = @thinking.to_s.length > 0

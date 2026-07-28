@@ -1,3 +1,23 @@
+## [0.8.0] — 2026-07-28
+
+### Changed
+
+- **`Ask::State::Memory` moved to `ask-state-providers`** — `ask-core` now only contains the abstract `State::Adapter` contract. The in-memory implementation is available in the `ask-state-providers` gem under the same class name (`Ask::State::Memory`). This keeps `ask-core` purely foundational.
+
+  ```ruby
+  # Before (ask-core 0.7.x)
+  require "ask"
+  store = Ask::State::Memory.new
+
+  # After — add ask-state-providers gem
+  require "ask-state-providers"
+  store = Ask::State::Memory.new  # same class name, same API
+  ```
+
+### Tested
+
+- 281 tests, 549 assertions, 0 failures
+
 ## [0.7.0] — 2026-07-26
 
 ### Added
