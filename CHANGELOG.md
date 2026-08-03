@@ -1,3 +1,30 @@
+## [0.9.0] — 2026-08-03
+
+### Changed
+
+- **`Ask::Result` is now the single result type for the whole ecosystem** — it
+  supports both the foundational API (`success`/`failure`/`aborted`/`blocked`
+  with `content` and `status`) and the tool API (`ok`/`error` with `ok?`,
+  `output`, and `error_message`), including both constructor keyword sets.
+  Previously `ask-tools` defined its own incompatible `Ask::Result`; whichever
+  gem loaded last won, so `Ask::Result.success` raised `ArgumentError` in any
+  app loading both (e.g. every ask-agent app), and `ask-rag`'s `raw.output`
+  call failed on provider embedding results. ask-tools now depends on
+  ask-core instead of redefining the class.
+- `Result#to_h` now serializes to `{ok:, output:, error:, metadata:}` (the
+  tool shape). `Result#inspect` is `ok=true output=...` / `ok=false error=...`.
+
+  ```ruby
+  Ask::Result.success("Data processed").to_h
+  # => {ok: true, output: "Data processed", error: nil, metadata: {}}
+
+  Ask::Result.ok(data: "Data processed")   # same class, same result
+  ```
+
+### Tested
+
+- ask-core test suite: all pass.
+
 ## [0.8.0] — 2026-07-28
 
 ### Changed

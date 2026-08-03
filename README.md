@@ -58,6 +58,21 @@ Ask::Provider.register(:my_provider, MyProvider)
 Ask::Provider.resolve(:my_provider)  # => MyProvider
 ```
 
+## Architecture & ownership
+
+ask-core owns the shared value objects and base contracts (`Ask::Message`,
+`Ask::Conversation`, `Ask::Content`, `Ask::Stream`, `Ask::Provider`,
+`Ask::Result`, `Ask::ModelCatalog`, `Ask::ToolDef`, `Ask::Document`, the
+`Ask::Error` hierarchy). It is zero-dependency on purpose: `ask-llm-providers`,
+`ask-rag`, `ask-graph`, and `ask-state-providers` depend on it *without*
+pulling in the tool framework.
+
+Feature gems extend what ask-core provides — they never redefine it.
+`Ask::Result` is the single result type for the whole ecosystem: foundational
+API (`success`/`failure`/`aborted`/`blocked`) and tool API (`ok`/`error`) in
+one class. See
+[Architecture & Ownership](https://ask-rb.github.io/ask-docs/reference/architecture).
+
 ## Full documentation
 
 The full ask-rb documentation lives at https://ask-rb.github.io/ask-docs. [ask-core in depth](https://ask-rb.github.io/ask-docs/core/ask-core) covers the types, streaming, and the provider contract. API reference: https://ask-rb.github.io/ask-docs/reference/api.
