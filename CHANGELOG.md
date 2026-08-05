@@ -1,3 +1,13 @@
+## [0.10.0] - 2026-08-05
+
+### Added
+
+- **`Ask::Result.pending`** — a new `:pending` status for async tool
+  execution. A tool returns pending to hand the turn back to the agent
+  (the interim message gets voiced) while the real work continues in the
+  background; the session completes it later. `Result#pending?` predicates
+  it; `to_h` keeps the tool shape.
+
 ## [0.9.0] — 2026-08-03
 
 ### Changed

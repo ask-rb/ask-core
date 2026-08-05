@@ -18,7 +18,7 @@ module Ask
   # Feature gems extend this class or build on it — they never redefine it.
   # See ask-docs "Architecture & ownership" for the rule.
   class Result
-    STATUSES = %i[success error aborted blocked short_circuited].freeze
+    STATUSES = %i[success error aborted blocked short_circuited pending].freeze
 
     class << self
       # @!group Factory Methods
@@ -53,6 +53,17 @@ module Ask
       # @return [Ask::Result]
       def blocked(reason)
         new(content: reason, status: :blocked)
+      end
+
+      # Create a pending result (async tool): the work continues in the
+      # background and the session completes it later via
+      # +Ask::Agent::Session#complete_pending_tool+. The agent voices the
+      # tool's interim message immediately and keeps talking.
+      # @param message [String] interim status the model can voice
+      # @param metadata [Hash] additional metadata
+      # @return [Ask::Result]
+      def pending(message, metadata: {})
+        new(content: message, status: :pending, metadata: metadata)
       end
 
       # Create a successful result (tool API — alias for +success+).
@@ -116,6 +127,9 @@ module Ask
 
     # @return [Boolean] true if the result is a success (tool API)
     def ok? = @status == :success
+
+    # @return [Boolean] true if the result is pending (async tool running)
+    def pending? = @status == :pending
 
     # @return [Boolean] true if the result is a success (tool API)
     def ok = @status == :success

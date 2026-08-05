@@ -137,3 +137,20 @@ class ResultTest < Minitest::Test
     assert_match(/ok=false.*error=/, Ask::Result.error(message: "fail").inspect)
   end
 end
+
+  def test_pending_result
+    result = Ask::Result.pending("Research started")
+
+    assert result.pending?
+    refute result.ok?
+    assert_equal :pending, result.status
+    assert_equal "Research started", result.content
+    assert_equal({ok: false, output: nil, error: nil, metadata: {}}, result.to_h)
+  end
+
+  def test_pending_result_with_metadata
+    result = Ask::Result.pending("Working", metadata: {task: "slots"})
+
+    assert result.pending?
+    assert_equal({task: "slots"}, result.metadata)
+  end
