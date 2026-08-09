@@ -141,6 +141,26 @@ module Ask
       base
     end
 
+    # Rebuild a message from a +to_h+ hash (persistence round-trips).
+    # Content-block arrays are reconstructed via {Content.from_h}.
+    #
+    # @param hash [Hash] a hash produced by {#to_h}
+    # @return [Message]
+    def self.from_h(hash)
+      hash = hash.transform_keys(&:to_s)
+      content = hash["content"]
+      content = content.map { |block| Content.from_h(block) } if content.is_a?(Array)
+
+      new(
+        role: hash["role"].to_sym,
+        content: content,
+        name: hash["name"],
+        tool_call_id: hash["tool_call_id"],
+        tool_calls: hash["tool_calls"],
+        metadata: hash["metadata"] || {}
+      )
+    end
+
     # @return [Boolean] true if role, content/block, name, and tool metadata all match
     def ==(other)
       return false unless other.is_a?(Message)

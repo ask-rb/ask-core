@@ -159,11 +159,14 @@ module Ask
       end
     end
 
-    # An inline file block within a multi-modal message.
+    # A file block within a multi-modal message.
+    #
+    # Carries inline +data+ by default; +url+ or +file_id+ can be used
+    # instead when the file lives somewhere the provider can reach.
     class File
       include Block
 
-      # @return [String] the file content
+      # @return [String, nil] raw file content
       attr_reader :data
 
       # @return [String, nil] MIME type
@@ -172,29 +175,76 @@ module Ask
       # @return [String, nil] original filename
       attr_reader :filename
 
-      # @param data [String] the file content
+      # @return [String, nil] URL of the file
+      attr_reader :url
+
+      # @return [String, nil] Provider-managed file ID
+      attr_reader :file_id
+
+      # @param data [String, nil] raw file content
       # @param mime_type [String, nil] MIME type
       # @param filename [String, nil] original filename
-      def initialize(data:, mime_type: nil, filename: nil)
+      # @param url [String, nil] URL of the file
+      # @param file_id [String, nil] Provider-managed file ID
+      def initialize(data: nil, mime_type: nil, filename: nil, url: nil, file_id: nil)
         @data = data
         @mime_type = mime_type
         @filename = filename
+        @url = url
+        @file_id = file_id
         freeze
       end
 
       def ==(other)
-        other.is_a?(File) && @data == other.data &&
-          @mime_type == other.mime_type && @filename == other.filename
+        other.is_a?(File) && @data == other.data && @mime_type == other.mime_type &&
+          @filename == other.filename && @url == other.url && @file_id == other.file_id
       end
       alias eql? ==
 
       def hash
-        [@data, @mime_type, @filename].hash
+        [@data, @mime_type, @filename, @url, @file_id].hash
       end
 
       def to_h
-        { type: "file", data: @data, mime_type: @mime_type, filename: @filename }
+        h = { type: "file" }
+        h[:data] = @data if @data
+        h[:mime_type] = @mime_type if @mime_type
+        h[:filename] = @filename if @filename
+        h[:url] = @url if @url
+        h[:file_id] = @file_id if @file_id
+        h
       end
     end
+
+    # Rebuild a content block from a +to_h+ hash (persistence round-trips).
+    #
+    # @param hash [Hash] a hash produced by {Block#to_h}
+    # @return [Block]
+    def self.from_h(hash)
+      hash = hash.transform_keys(&:to_s)
+      case hash["type"]
+      when "text"
+        Text.new(hash["text"].to_s)
+      when "image"
+        Image.new(**media_args(hash))
+      when "audio"
+        Audio.new(**media_args(hash))
+      when "video"
+        Video.new(**media_args(hash))
+      when "file"
+        File.new(
+          data: hash["data"], mime_type: hash["mime_type"], filename: hash["filename"],
+          url: hash["url"], file_id: hash["file_id"]
+        )
+      else
+        raise ArgumentError, "Unknown content block type: #{hash["type"].inspect}"
+      end
+    end
+
+    # @api private
+    def self.media_args(hash)
+      { url: hash["url"], base64: hash["base64"], mime_type: hash["mime_type"], file_id: hash["file_id"] }
+    end
+    private_class_method :media_args
   end
 end

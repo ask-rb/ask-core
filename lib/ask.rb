@@ -17,7 +17,10 @@ module Ask
 end
 
 require_relative "ask/errors"
+require_relative "ask/mime"
+require_relative "ask/data_uri"
 require_relative "ask/content"
+require_relative "ask/attachment"
 require_relative "ask/tool_def"
 require_relative "ask/result"
 require_relative "ask/stream"
