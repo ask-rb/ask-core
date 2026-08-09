@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift File.expand_path("lib", __dir__)
-$LOAD_PATH.unshift File.expand_path("../ask-core/lib", __dir__)
-$LOAD_PATH.unshift File.expand_path("../ask-llm-providers/lib", __dir__)
-$LOAD_PATH.unshift File.expand_path("../ask-auth/lib", __dir__)
-$LOAD_PATH.unshift File.expand_path("../ask-tools/lib", __dir__)
+# Prefer sibling gem checkouts when present (this is a live integration
+# test for the provider stack; it runs against the sibling ask-llm-providers).
+sibling = ->(name) { File.expand_path("../../#{name}/lib", __dir__) }
+$LOAD_PATH.unshift sibling.call("ask-core") if Dir.exist?(sibling.call("ask-core"))
+$LOAD_PATH.unshift sibling.call("ask-llm-providers") if Dir.exist?(sibling.call("ask-llm-providers"))
 
 # Guard: skip unless optional dependencies are available
 begin
@@ -28,17 +28,33 @@ class ProxyIntegrationTest < Minitest::Test
         @key = v.strip.tr("'\"", "") if k == "DEEPSEEK_API_KEY"
       end
     end
+  rescue Errno::ENOENT
+    # No llm-proxy/.env — @key stays nil and the tests skip.
+  end
+
+  # DeepSeek is registered dynamically as an OpenAI-compatible provider;
+  # resolve it by slug. These are LIVE tests — skip cleanly when the
+  # provider or an API key isn't available.
+  def deepseek_provider
+    klass = begin
+      Ask::Provider.resolve(:deepseek)
+    rescue Ask::UnknownProvider
+      nil
+    end
+    skip "DeepSeek provider unavailable in ask-llm-providers" unless klass
+    skip "DEEPSEEK_API_KEY not configured (set it or add llm-proxy/.env)" unless @key
+    klass.new(api_key: @key)
   end
 
   def test_basic_chat
-    provider = Ask::Providers::DeepSeek.new(api_key: @key)
+    provider = deepseek_provider
     messages = [{ role: "user", content: "Say hi in one word" }]
     response = provider.chat(messages, model: "deepseek-chat", stream: false)
     assert response.content.to_s.length > 0
   end
 
   def test_chat_with_tools
-    provider = Ask::Providers::DeepSeek.new(api_key: @key)
+    provider = deepseek_provider
     tool_def = Ask::ToolDef.new(
       name: "get_time",
       description: "Get current time",
@@ -54,7 +70,7 @@ class ProxyIntegrationTest < Minitest::Test
   end
 
   def test_multi_turn_with_tool_result
-    provider = Ask::Providers::DeepSeek.new(api_key: @key)
+    provider = deepseek_provider
     tool_def = Ask::ToolDef.new(
       name: "get_time",
       description: "Get current time",
@@ -80,7 +96,7 @@ class ProxyIntegrationTest < Minitest::Test
   end
 
   def test_tool_result_streaming
-    provider = Ask::Providers::DeepSeek.new(api_key: @key)
+    provider = deepseek_provider
     tool_def = Ask::ToolDef.new(
       name: "t",
       description: "A test tool",
