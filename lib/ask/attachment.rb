@@ -223,6 +223,12 @@ module Ask
     end
 
     def derive_mime_type
+      # Duck-typed blobs usually know their own content type (e.g.
+      # ActiveStorage) — prefer it over extension/sniffing.
+      if @blob && @blob.respond_to?(:content_type) && !@blob.content_type.to_s.empty?
+        return @blob.content_type
+      end
+
       bytes = sniffable_bytes
       Mime.detect(filename: filename, bytes: bytes)
     end

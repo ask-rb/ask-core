@@ -205,3 +205,17 @@ class DataURITest < Minitest::Test
     assert_raises(ArgumentError) { Ask::DataURI.decode("https://example.com/x") }
   end
 end
+
+class AttachmentBlobMimeTest < Minitest::Test
+  def test_blob_content_type_is_preferred
+    blob = Object.new
+    def blob.download = "some content"
+    def blob.filename = "report"
+    def blob.content_type = "application/pdf"
+
+    attachment = Ask::Attachment.new(blob: blob)
+
+    assert_equal "application/pdf", attachment.mime_type
+    assert_equal :pdf, attachment.type
+  end
+end
