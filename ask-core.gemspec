@@ -20,6 +20,9 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*", "LICENSE", "README.md", "CHANGELOG.md"]
   spec.require_paths = ["lib"]
 
+  # data_uri.rb requires base64, which left the default gems in Ruby 3.4.
+  spec.add_dependency "base64", "~> 0.2"
+
   spec.add_development_dependency "minitest", "~> 5.25"
   spec.add_development_dependency "mocha", "~> 3.1"
   spec.add_development_dependency "rake", "~> 13.0"
