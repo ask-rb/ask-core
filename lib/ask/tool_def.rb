@@ -16,6 +16,21 @@ module Ask
   #   )
   #
   class ToolDef
+    # What a tool with no parameters advertises.
+    #
+    # Present rather than nil, because a nil schema is not "no arguments" to
+    # a strict OpenAI-compatible gateway — it is an invalid function. One
+    # (commandcode) answers the whole request with "Invalid input: expected
+    # record, received null" and names only `tools.0.function.parameters`,
+    # so a single parameterless tool breaks a session that never calls it.
+    # An empty object schema says the true thing.
+    EMPTY_SCHEMA = {
+      "type" => "object",
+      "properties" => {},
+      "required" => [],
+      "additionalProperties" => false
+    }.freeze
+
     class << self
       # Build a ToolDef from an object that responds to #name, #description,
       # #params_schema, and #provider_params.
@@ -26,7 +41,7 @@ module Ask
         new(
           name: tool.name,
           description: tool.description,
-          parameters: schema,
+          parameters: schema.nil? || schema.empty? ? EMPTY_SCHEMA : schema,
           provider_params: tool.provider_params
         )
       end

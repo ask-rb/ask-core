@@ -96,6 +96,37 @@ class ToolDefTest < Minitest::Test
     assert_equal true, tool.provider_params[:extra]
   end
 
+  # A tool with no arguments must still advertise an object schema. Sending
+  # nil is not "no arguments" to a strict OpenAI-compatible gateway — it is
+  # an invalid function, and one (commandcode) fails the entire request with
+  # "Invalid input: expected record, received null", naming only
+  # `tools.0.function.parameters`. So one parameterless tool in a toolkit
+  # breaks every session that mounts it, whether or not it is ever called.
+  def test_from_tool_with_no_schema_advertises_an_empty_object
+    bare = Object.new
+    bare.define_singleton_method(:name) { "git_status" }
+    bare.define_singleton_method(:description) { "Show status" }
+    bare.define_singleton_method(:params_schema) { nil }
+    bare.define_singleton_method(:provider_params) { {} }
+
+    schema = Ask::ToolDef.from_tool(bare).parameters
+
+    refute_nil schema, "a nil schema is an invalid function, not a parameterless one"
+    assert_equal "object", schema[:type] || schema["type"]
+    assert_empty schema[:properties] || schema["properties"]
+  end
+
+  def test_from_tool_with_an_empty_schema_also_gets_the_object_shape
+    bare = Object.new
+    bare.define_singleton_method(:name) { "git_branch" }
+    bare.define_singleton_method(:description) { "Show branches" }
+    bare.define_singleton_method(:params_schema) { {} }
+    bare.define_singleton_method(:provider_params) { {} }
+
+    schema = Ask::ToolDef.from_tool(bare).parameters
+    assert_equal "object", schema[:type] || schema["type"]
+  end
+
   def test_inspect
     tool = Ask::ToolDef.new(name: "my_tool")
     assert_match(/ToolDef.*my_tool/, tool.inspect)
