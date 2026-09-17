@@ -1,3 +1,31 @@
+## [0.12.0] - 2026-09-18
+
+### Added
+
+- **The decision vocabulary — `Ask::Decision`, `Ask::DecisionResult`,
+  `Ask::DecisionProvider`.** Typed questions that return structured answers
+  with calibrated probabilities: `Choice` (pick one of a defined set), `Score`
+  (a position on ordered levels), and `Noul` (a yes/no with a probability).
+  `DecisionProvider` is the registry that makes the backing engine swappable,
+  and `DecisionResult::Batch` answers a whole set of questions asked together.
+
+  The vocabulary lives in ask-core, and only the vocabulary: dependency-free
+  value objects every gem can speak, with no client, no retries and no
+  transport. The implementation is `ask-decisions`; a provider that talks to
+  TypeSafe/Jev, or to anything else, registers itself and is reachable from
+  everywhere the vocabulary is.
+
+  ```ruby
+  question = Ask::Decision::Choice.new(
+    instructions: "Which team should handle this?",
+    criteria: {billing: "Payment issues", technical: "Bugs or outages"}
+  )
+  provider.evaluate(state: "Charged twice for A-104", decisions: {"route" => question})
+  # => #<ChoiceAnswer choice="billing" confidence=0.89>
+  ```
+
+  New public API, so the minor version moves. Nothing existing changed.
+
 ## [0.10.0] - 2026-08-05
 
 ### Added
